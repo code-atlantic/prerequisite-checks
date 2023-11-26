@@ -1,7 +1,7 @@
 {
 	"name": "code-atlantic/prerequisite-checks",
 	"description": "WordPress prerequisite checks for plugins and themes",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"minimum-stability": "dev",
 	"require": {},
 	"license": "GPL-2.0+",
@@ -9,7 +9,7 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"CodeAtlantic\\PreRequisiteChecks\\": "src/"
+			"CodeAtlantic\\PrerequisiteChecks\\": "src/"
 		}
 	}
 }

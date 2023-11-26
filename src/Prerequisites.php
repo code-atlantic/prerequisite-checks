@@ -2,17 +2,17 @@
 /**
  * Prerequisite handler.
  *
- * @package ContentControlTeasers\Plugin
+ * @package CodeAtlantic\PrerequisiteChecks;
  */
 
-namespace CodeAtlantic\PreRequisiteChecks;
+namespace CodeAtlantic\PrerequisiteChecks;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Prerequisite handler.
  *
- * @version 1.0.0
+ * @version 1.2.0
  */
 class Prerequisites {
 
@@ -38,11 +38,11 @@ class Prerequisites {
 	protected $failures = [];
 
 	/**
-	 * Text domain.
+	 * Array of config arguments.
 	 * 
-	 * @var string
+	 * @var array
 	 */
-	protected $text_domain = '';
+	protected $config = [];
 
 	/**
 	 * Instantiate prerequisite checker.
@@ -50,8 +50,12 @@ class Prerequisites {
 	 * @param array $requirements Array of requirements.
 	 * @param string $text_domain Text domain.
 	 */
-	public function __construct( $requirements = [], $text_domain = '' ) {
-		$this->text_domain = $text_domain;
+	public function __construct( $requirements = [], $config = [] ) {
+		$this->config = wp_parse_args( $config, [
+			'slug'		  => null,
+			'name'		  => null,
+			'text_domain' => 'default',
+		] );
 
 		foreach ( $requirements as $arguments ) {
 			switch ( $arguments['type'] ) {
@@ -320,9 +324,9 @@ class Prerequisites {
 	public function get_php_message( $failed_check_args ) {
 		return sprintf(
 			/* translators: 1. Plugin Name, Requirement name (WordPress|PHP)., 2. Version Number. */
-			__( 'The plugin "%1$s" requires <b>%1$s %2$s</b> or higher in order to run.', $this->text_domain ),
-			$failed_check_args['dep_label'],
-			__( 'PHP', 'default', $this->text_domain ),
+			__( 'The plugin "%1$s" requires <b>%2$s v%3$s</b> or higher in order to run.', $this->config['text_domain'] ),
+			isset( $this->config['name'] ) ? $this->config['name'] : '',
+			__( 'PHP', 'default', $this->config['text_domain'] ),
 			$failed_check_args['version']
 		);
 	}
@@ -337,9 +341,9 @@ class Prerequisites {
 	public function get_wp_message( $failed_check_args ) {
 		return sprintf(
 			/* translators: 1. Plugin Name, Requirement name (WordPress|PHP)., 2. Version Number. */
-			__( 'The plugin "%1$s" requires <b>%1$s %2$s</b> or higher in order to run.', $this->text_domain ),
-			$failed_check_args['dep_label'],
-			__( 'WordPress', 'default', $this->text_domain ),
+			__( 'The plugin "%1$s" requires <b>%2$s v%3$s</b> or higher in order to run.', $this->config['text_domain'] ),
+			isset( $this->config['name'] ) ? $this->config['name'] : '',
+			__( 'WordPress', 'default', $this->config['text_domain'] ),
 			$failed_check_args['version']
 		);
 	}
@@ -357,39 +361,38 @@ class Prerequisites {
 		$short_slug = explode( '/', $slug );
 		$short_slug = $short_slug[0];
 		$name       = $failed_check_args['name'];
-		$dep_label  = $failed_check_args['dep_label'];
 
 		if ( isset( $failed_check_args['not_activated'] ) ) {
 			$url  = esc_url( wp_nonce_url( admin_url( 'plugins.php?action=activate&plugin=' . $slug ), 'activate-plugin_' . $slug ) );
-			$link = '<a href="' . $url . '">' . __( 'activate it', $this->text_domain ) . '</a>';
+			$link = '<a href="' . $url . '">' . __( 'activate it', $this->config['text_domain'] ) . '</a>';
 
 			$text = sprintf(
 				/* translators: 1. Plugin Name, 2. Required Plugin Name, 4. `activate it` link. */
-				__( 'The plugin "%1$s" requires %2$s! Please %3$s to continue!', $this->text_domain ),
-				$dep_label,
+				__( 'The plugin "%1$s" requires %2$s! Please %3$s to continue!', $this->config['text_domain'] ),
+				isset( $this->config['name'] ) ? $this->config['name'] : '',
 				'<strong>' . $name . '</strong>',
 				$link
 			);
 		} elseif ( isset( $failed_check_args['not_updated'] ) ) {
 			$url  = esc_url( wp_nonce_url( admin_url( 'update.php?action=upgrade-plugin&plugin=' . $slug ), 'upgrade-plugin_' . $slug ) );
-			$link = '<a href="' . $url . '">' . __( 'update it', $this->text_domain ) . '</a>';
+			$link = '<a href="' . $url . '">' . __( 'update it', $this->config['text_domain'] ) . '</a>';
 
 			$text = sprintf(
 				/* translators: 1. Plugin Name, 2. Required Plugin Name, 3. Version number, 4. `update it` link. */
-				__( 'The plugin "%1$s" requires %2$s v%3$s or higher! Please %4$s to continue!', $this->text_domain ),
-				$dep_label,
+				__( 'The plugin "%1$s" requires %2$s v%3$s or higher! Please %4$s to continue!', $this->config['text_domain'] ),
+				isset( $this->config['name'] ) ? $this->config['name'] : '',
 				'<strong>' . $name . '</strong>',
 				'<strong>' . $failed_check_args['version'] . '</strong>',
 				$link
 			);
 		} else {
 			$url  = esc_url( wp_nonce_url( self_admin_url( 'update.php?action=install-plugin&plugin=' . $short_slug ), 'install-plugin_' . $short_slug ) );
-			$link = '<a href="' . $url . '">' . __( 'install it', $this->text_domain ) . '</a>';
+			$link = '<a href="' . $url . '">' . __( 'install it', $this->config['text_domain'] ) . '</a>';
 
 			$text = sprintf(
 				/* translators: 1. Plugin Name, 2. Required Plugin Name, 3. `install it` link. */
-				__( 'The plugin "%1$s" requires %2$s! Please %3$s to continue!', $this->text_domain ),
-				$dep_label,
+				__( 'The plugin "%1$s" requires %2$s! Please %3$s to continue!', $this->config['text_domain'] ),
+				isset( $this->config['name'] ) ? $this->config['name'] : '',
 				'<strong>' . $name . '</strong>',
 				$link
 			);
