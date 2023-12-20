@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Prerequisite handler.
  *
- * @version 1.2.0
+ * @version 1.3.0
  */
 class Prerequisites {
 
@@ -80,18 +80,31 @@ class Prerequisites {
 					);
 					break;
 				case 'plugin':
-					// If $slug does not contain / & .php, assume its a folder name & append.
-					if ( false === strpos( $arguments['slug'], '/' ) && false === strpos( $arguments['slug'], '.php' ) ) {
-						$arguments['slug'] .= '/' . $arguments['slug'] . '.php';
+					// If slug is set and basename is empty, set basename from slug.
+					if ( empty( $arguments['basename'] ) ) {
+						// If $slug does not contain / & .php, assume its a folder name & append.
+						if ( false === strpos( $arguments['slug'], '/' ) || false === strpos( $arguments['slug'], '.php' ) ) {
+							$arguments['basename'] = $arguments['slug'] . '/' . $arguments['slug'] . '.php';
+						} else {
+							$arguments['basename'] = $arguments['slug'];
+						}
+					}
+
+					if ( isset( $arguments['check_installed'] ) ) {
+						$arguments['required'] = true;
 					}
 
 					$this->checks[] = wp_parse_args(
 						$arguments,
 						[
 							'type'            => 'plugin',
+							// Slug or basename.
 							'slug'            => '',
+							'basename'        => '',
 							'name'            => '',
 							'version'         => '',
+							'required'        => false,
+							// Deprecated, use required.
 							'check_installed' => false,
 							'dep_label'       => '',
 						]
@@ -207,7 +220,28 @@ class Prerequisites {
 	 * @return bool
 	 */
 	public function check_plugin( $check_args ) {
-		$active = $this->plugin_is_active( $check_args['slug'] );
+		$plugin_basename = $check_args['basename'];
+
+		$installed = $this->plugin_is_installed( $plugin_basename );
+
+		if ( $check_args['required'] ) {
+			// Check if not installed, if so the plugin is not activated.
+			if ( ! $installed ) {
+				$this->report_failure(
+					array_merge(
+						$check_args,
+						[
+							// Report not_activated status.
+							'not_installed' => true,
+						]
+					)
+				);
+
+				return false;
+			}
+		}
+
+		$active = $installed ? $this->plugin_is_active( $plugin_basename ) : false;
 
 		/**
 		 * The following checks are performed in this order for performance reasons.
@@ -222,7 +256,7 @@ class Prerequisites {
 		if ( true === $active ) {
 			// If required version is set & plugin is active, check that first.
 			if ( isset( $check_args['version'] ) ) {
-				$version = $this->get_plugin_data( $check_args['slug'], 'Version' );
+				$version = $this->get_plugin_data( $plugin_basename, 'Version' );
 
 				// If its higher than the required version, we can bail now > true.
 				if ( version_compare( $version, $check_args['version'], '>=' ) ) {
@@ -244,31 +278,17 @@ class Prerequisites {
 				// If the plugin is active, with no required version, were done > true.
 				return true;
 			}
-		}
-
-		if ( $check_args['check_installed'] ) {
-			// Check if installed, if so the plugin is not activated.
-			if ( $check_args['name'] === $this->get_plugin_data( $check_args['slug'], 'Name' ) ) {
-				$this->report_failure(
-					array_merge(
-						$check_args,
-						[
-							// Report not_activated status.
-							'not_activated' => true,
-						]
-					)
-				);
-			} else {
-				$this->report_failure(
-					array_merge(
-						$check_args,
-						[
-							// Report not_installed status.
-							'not_installed' => true,
-						]
-					)
-				);
-			}
+		} elseif ( $installed ) {
+			$this->report_failure(
+				array_merge(
+					$check_args,
+					[
+						// Report not_activated status.
+						'not_activated' => true,
+					]
+				)
+			);
+			return false;
 		}
 
 		return false;
@@ -300,19 +320,38 @@ class Prerequisites {
 		return isset( $plugin_data[ $header ] ) ? $plugin_data[ $header ] : null;
 	}
 
+
 	/**
-	 * Check if plugin is active.
+	 * Check if an addon is installed.
 	 *
-	 * @param string $slug Slug to check for.
+	 * @param string $plugin_basename Plugin slug.
 	 *
 	 * @return bool
 	 */
-	protected function plugin_is_active( $slug ) {
-		$active_plugins = get_option( 'active_plugins', [] );
+	public function plugin_is_installed( $plugin_basename ) {
+		static $installed_plugins = null;
 
-		return in_array( $slug, $active_plugins, true );
+		if ( null === $installed_plugins ) {
+			if ( ! function_exists( 'get_plugins' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+
+			$installed_plugins = \get_plugins();
+		}
+
+		return isset( $installed_plugins[ $plugin_basename ] );
 	}
 
+	/**
+	 * Check if plugin is active.
+	 *
+	 * @param string $plugin_basename Plugin basename to check for.
+	 *
+	 * @return bool
+	 */
+	protected function plugin_is_active( $plugin_basename ) {
+		return is_plugin_active( $plugin_basename );
+	}
 
 	/**
 	 * Get php error message.
