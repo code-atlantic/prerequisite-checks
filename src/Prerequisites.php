@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Prerequisite handler.
  *
- * @version 1.3.1
+ * @version 1.3.2
  */
 class Prerequisites {
 
@@ -396,14 +396,14 @@ class Prerequisites {
 	 * @return string
 	 */
 	public function get_plugin_message( $failed_check_args ) {
-		$slug = $failed_check_args['slug'];
+		$plugin_basename = $failed_check_args['basename'];
 		// Without file path.
-		$short_slug = explode( '/', $slug );
+		$short_slug = explode( '/', $plugin_basename );
 		$short_slug = $short_slug[0];
 		$name       = $failed_check_args['name'];
 
 		if ( isset( $failed_check_args['not_activated'] ) ) {
-			$url  = esc_url( wp_nonce_url( admin_url( 'plugins.php?action=activate&plugin=' . $slug ), 'activate-plugin_' . $slug ) );
+			$url  = esc_url( wp_nonce_url( admin_url( 'plugins.php?action=activate&plugin=' . $plugin_basename ), 'activate-plugin_' . $plugin_basename ) );
 			$link = '<a href="' . $url . '">' . __( 'activate it', $this->config['text_domain'] ) . '</a>';
 
 			$text = sprintf(
@@ -414,7 +414,7 @@ class Prerequisites {
 				$link
 			);
 		} elseif ( isset( $failed_check_args['not_updated'] ) ) {
-			$url  = esc_url( wp_nonce_url( admin_url( 'update.php?action=upgrade-plugin&plugin=' . $slug ), 'upgrade-plugin_' . $slug ) );
+			$url  = esc_url( wp_nonce_url( admin_url( 'update.php?action=upgrade-plugin&plugin=' . $plugin_basename ), 'upgrade-plugin_' . $plugin_basename ) );
 			$link = '<a href="' . $url . '">' . __( 'update it', $this->config['text_domain'] ) . '</a>';
 
 			$text = sprintf(
