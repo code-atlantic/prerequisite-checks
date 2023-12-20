@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Prerequisite handler.
  *
- * @version 1.3.0
+ * @version 1.3.1
  */
 class Prerequisites {
 
@@ -224,24 +224,25 @@ class Prerequisites {
 
 		$installed = $this->plugin_is_installed( $plugin_basename );
 
-		if ( $check_args['required'] ) {
+		if ( $check_args['required'] && ! $installed ) {
 			// Check if not installed, if so the plugin is not activated.
-			if ( ! $installed ) {
-				$this->report_failure(
-					array_merge(
-						$check_args,
-						[
-							// Report not_activated status.
-							'not_installed' => true,
-						]
-					)
-				);
+			$this->report_failure(
+				array_merge(
+					$check_args,
+					[
+						// Report not_activated status.
+						'not_installed' => true,
+					]
+				)
+			);
 
-				return false;
-			}
+			return false;
+		} elseif ( ! $check_args['required'] && ! $installed ) {
+			// If not required and not installed, we can bail now > true.
+			return true;
 		}
 
-		$active = $installed ? $this->plugin_is_active( $plugin_basename ) : false;
+		$active = $installed && $this->plugin_is_active( $plugin_basename );
 
 		/**
 		 * The following checks are performed in this order for performance reasons.
